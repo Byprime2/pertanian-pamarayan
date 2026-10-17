@@ -33,14 +33,13 @@ export default function LoginPage() {
       {/* VIDEO BACKGROUND */}
       {/* Ganti "8.mp4" dengan nama video pengenalan perusahaan Anda nanti */}
       <video 
-        autoPlay 
-        loop 
-        muted 
-        playsInline 
-        className="absolute inset-0 w-full h-full object-cover z-0"
-      >
-        <source src="/Photos/Profile.mp4" type="video/mp4" />
-      </video>
+  autoPlay 
+  loop 
+  muted 
+  playsInline 
+  className="..."
+  src="https://[https://ptgnowzbqxjjvgylwqva.supabase.co/storage/v1/object/public/images/profile.mp4]" 
+/>
 
       {/* OVERLAY GELAP (Agar video tidak mengalahkan warna teks form login) */}
       <div className="absolute inset-0 bg-surface-900/60 z-0 backdrop-blur-[2px]"></div>
