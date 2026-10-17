@@ -106,7 +106,7 @@ export default function Navbar() {
             {/* LOGO BESAR & IDENTITAS */}
             <Link href={isAdminPage ? "/admin" : "/"} className="flex items-center gap-3 md:gap-4 group">
               <img 
-                src="/logo 1.png" alt="Logo" 
+                src="/Logo-1.png" alt="Logo" 
                 className="w-12 h-12 md:w-16 md:h-16 object-contain drop-shadow-[0_0_12px_rgba(16,185,129,0.4)] group-hover:scale-105 transition-transform"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
