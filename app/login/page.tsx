@@ -53,7 +53,7 @@ export default function LoginPage() {
       <div className="relative z-10 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center mb-6">
           <div className="text-white flex items-center justify-center">
-            <img src="/Logo 1.png" alt="Logo Pamarayan" className="h-20 w-auto object-contain" />
+            <img src="/Logo-1.png" alt="Logo Pamarayan" className="h-20 w-auto object-contain" />
           </div>
         </div>
         <h2 className="text-center text-3xl font-black tracking-tight text-white drop-shadow-md">
