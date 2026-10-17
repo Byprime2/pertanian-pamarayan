@@ -38,7 +38,7 @@ export default function LoginPage() {
   muted 
   playsInline 
   className="..."
-  src="https://https://ptgnowzbqxjjvgylwqva.supabase.co/storage/v1/object/public/images/profile.mp4" 
+  src="https://ptgnowzbqxjjvgylwqva.supabase.co/storage/v1/object/public/images/profile.mp4" 
 />
 
       {/* OVERLAY GELAP (Agar video tidak mengalahkan warna teks form login) */}
