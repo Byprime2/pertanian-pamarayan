@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { 
   Leaf, ShoppingBag, ShieldCheck, TrendingUp, 
   CheckCircle2, ChevronRight, Star, Clock, Newspaper, 
-  ArrowRight, X, Quote, Truck, Search, MessageCircle 
+  ArrowRight, X, Quote, Truck, Search, MessageCircle, XCircle 
 } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
@@ -26,7 +26,8 @@ export default function PublicLandingPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: harvestData } = await supabase.from('harvests').select('*').gt('remaining_kg', 0).order('harvest_date', { ascending: false }).limit(6)
+      // HAPUS filter .gt('remaining_kg', 0) agar semua barang tampil
+      const { data: harvestData } = await supabase.from('harvests').select('*').order('harvest_date', { ascending: false }).limit(6)
       if (harvestData) setProducts(harvestData)
 
       const { data: newsData } = await supabase.from('land_news').select('*').order('published_at', { ascending: false }).limit(3)
@@ -45,7 +46,6 @@ export default function PublicLandingPage() {
     return () => clearInterval(timer)
   }, [])
 
-  // Fungsi gambar premium otomatis untuk etalase
   const getProductImage = (name: string) => {
     const lowerName = name.toLowerCase()
     if (lowerName.includes('timun')) return 'https://images.unsplash.com/photo-1604977042946-1eecc30f269e?q=80&w=800&auto=format&fit=crop'
@@ -70,7 +70,6 @@ export default function PublicLandingPage() {
               alt="Lahan Pamarayan" 
               className="w-full h-full object-cover animate-[kenburns_20s_ease-in-out_infinite_alternate] opacity-70" 
             />
-            {/* Sophisticated Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/10 to-emerald-900/30 mix-blend-multiply"></div>
             <div className="absolute inset-0 bg-gradient-to-r from-slate-950/30 via-slate-900/10 to-transparent"></div>
           </div>
@@ -111,7 +110,6 @@ export default function PublicLandingPage() {
         {/* 2. FLOATING FEATURES SECTION */}
         <div id="keunggulan" className="relative z-20 -mt-24 md:-mt-32 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
             <div className="bg-white/95 backdrop-blur-xl rounded-[2rem] p-8 md:p-10 shadow-2xl shadow-slate-900/10 border border-white flex flex-col hover:-translate-y-2 transition-transform duration-500 group">
               <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
                 <Leaf size={28} />
@@ -119,7 +117,6 @@ export default function PublicLandingPage() {
               <h3 className="text-xl font-extrabold text-slate-900 mb-3">Panen Harian</h3>
               <p className="text-slate-500 font-medium leading-relaxed">Komoditas dipanen dan didistribusikan di hari yang sama demi mempertahankan nutrisi dan kesegaran 100%.</p>
             </div>
-            
             <div className="bg-white/95 backdrop-blur-xl rounded-[2rem] p-8 md:p-10 shadow-2xl shadow-slate-900/10 border border-white flex flex-col hover:-translate-y-2 transition-transform duration-500 group">
               <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
                 <TrendingUp size={28} />
@@ -127,7 +124,6 @@ export default function PublicLandingPage() {
               <h3 className="text-xl font-extrabold text-slate-900 mb-3">Harga Tangan Pertama</h3>
               <p className="text-slate-500 font-medium leading-relaxed">Tanpa tengkulak dan perantara panjang. Optimalkan profit bisnis retail atau restoran Anda bersama kami.</p>
             </div>
-            
             <div className="bg-white/95 backdrop-blur-xl rounded-[2rem] p-8 md:p-10 shadow-2xl shadow-slate-900/10 border border-white flex flex-col hover:-translate-y-2 transition-transform duration-500 group">
               <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
                 <ShieldCheck size={28} />
@@ -135,7 +131,6 @@ export default function PublicLandingPage() {
               <h3 className="text-xl font-extrabold text-slate-900 mb-3">Sortir Quality Control</h3>
               <p className="text-slate-500 font-medium leading-relaxed">Melalui penyortiran ketat grade-A pasca panen. Menjamin Anda hanya menerima produk terbaik tanpa cacat.</p>
             </div>
-
           </div>
         </div>
 
@@ -153,7 +148,7 @@ export default function PublicLandingPage() {
                 </h2>
               </div>
               <Link href="/etalase" className="hidden md:flex items-center justify-center gap-2 bg-white text-slate-700 hover:text-emerald-600 px-6 py-3 rounded-xl text-sm font-bold border border-slate-200 shadow-sm transition-all hover:shadow-md">
-                Lihat Semua Stok <ArrowRight size={16} />
+                Liat Etalase Lengkap <ArrowRight size={16} />
               </Link>
             </div>
 
@@ -163,59 +158,78 @@ export default function PublicLandingPage() {
                </div>
             ) : products.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {products.map((p) => (
-                  <div key={p.id} className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden hover:shadow-2xl hover:shadow-emerald-900/5 hover:-translate-y-2 transition-all duration-500 group flex flex-col">
-                    
-                    {/* Image Area */}
-                    <div className="h-64 relative overflow-hidden bg-slate-100">
-                      <img src={getProductImage(p.crop_name)} alt={p.crop_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent"></div>
-                      
-                      {/* Floating Badges */}
-                      <div className="absolute top-4 left-4 flex flex-col gap-2">
-                        <div className="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-lg text-[10px] font-black text-slate-800 shadow-lg flex items-center gap-1.5 uppercase tracking-wide">
-                          <CheckCircle2 size={12} className="text-emerald-500" /> Siap Kirim
-                        </div>
-                        {p.remaining_kg > 50 && (
-                          <div className="bg-emerald-500 text-white px-3 py-1 rounded-lg text-[10px] font-black shadow-lg uppercase tracking-wide">
-                            Grosir Tersedia
-                          </div>
-                        )}
-                      </div>
+                {products.map((p) => {
+                  const isHabis = p.remaining_kg <= 0;
 
-                      {/* Title over image */}
-                      <div className="absolute bottom-4 left-4 right-4">
-                         <h3 className="text-2xl font-black text-white mb-1 line-clamp-1 drop-shadow-md">{p.crop_name}</h3>
-                         <p className="text-xs font-bold text-slate-300 flex items-center gap-1">
-                           <Clock size={12} /> Panen: {new Date(p.harvest_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
-                         </p>
-                      </div>
-                    </div>
-                    
-                    {/* Content Area */}
-                    <div className="p-6 flex-1 flex flex-col bg-white">
-                      <div className="mt-auto">
-                        <div className="flex justify-between items-end mb-6">
-                          <div>
-                            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block mb-1">Sisa Stok</span>
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-3xl font-black text-slate-900">{p.remaining_kg}</span>
-                              <span className="text-sm font-bold text-slate-500">Kg</span>
+                  return (
+                    <div key={p.id} className={`bg-white rounded-[2rem] border overflow-hidden transition-all duration-500 group flex flex-col relative ${isHabis ? 'border-gray-200 grayscale opacity-80' : 'border-slate-100 hover:shadow-2xl hover:shadow-emerald-900/5 hover:-translate-y-2'}`}>
+                      
+                      {/* Image Area */}
+                      <div className="h-64 relative overflow-hidden bg-slate-100">
+                        <img src={getProductImage(p.crop_name)} alt={p.crop_name} className={`w-full h-full object-cover transition-transform duration-700 ease-out ${!isHabis && 'group-hover:scale-105'}`} />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent"></div>
+                        
+                        {/* Floating Badges */}
+                        <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
+                          {isHabis ? (
+                            <div className="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-lg flex items-center gap-1.5 uppercase tracking-wide">
+                              <XCircle size={12} /> Stok Habis
                             </div>
-                          </div>
-                          
-                          {p.remaining_kg < 20 && (
-                             <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded-md">Hampir Habis!</span>
+                          ) : (
+                            <>
+                              <div className="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-lg text-[10px] font-black text-slate-800 shadow-lg flex items-center gap-1.5 uppercase tracking-wide">
+                                <CheckCircle2 size={12} className="text-emerald-500" /> Siap Kirim
+                              </div>
+                              {p.remaining_kg > 50 && (
+                                <div className="bg-red-500 text-white px-3 py-1 rounded-lg text-[10px] font-black shadow-lg uppercase tracking-wide">
+                                  Grosir Tersedia
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
-                        
-                        <a href={`https://wa.me/6282114064622?text=Halo%20Admin%20Pamarayan,%20saya%20tertarik%20membeli%20komoditas%20${p.crop_name}`} target="_blank" className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white hover:bg-emerald-600 py-3.5 rounded-xl font-bold transition-colors shadow-md text-sm">
-                          <ShoppingBag size={16} /> Pesan Via WhatsApp
-                        </a>
+
+                        {/* Title over image */}
+                        <div className="absolute bottom-4 left-4 right-4 z-10">
+                           <h3 className="text-2xl font-black text-white mb-1 line-clamp-1 drop-shadow-md">{p.crop_name}</h3>
+                           <p className="text-xs font-bold text-slate-300 flex items-center gap-1">
+                             <Clock size={12} /> Panen: {new Date(p.harvest_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                           </p>
+                        </div>
+                      </div>
+                      
+                      {/* Content Area */}
+                      <div className="p-6 flex-1 flex flex-col bg-white">
+                        <div className="mt-auto">
+                          <div className="flex justify-between items-end mb-6">
+                            <div>
+                              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block mb-1">Sisa Stok</span>
+                              <div className="flex items-baseline gap-1">
+                                <span className={`text-3xl font-black ${isHabis ? 'text-slate-400' : 'text-slate-900'}`}>{p.remaining_kg}</span>
+                                <span className="text-sm font-bold text-slate-500">Kg</span>
+                              </div>
+                            </div>
+                            
+                            {!isHabis && p.remaining_kg < 20 && (
+                               <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded-md">Hampir Habis!</span>
+                            )}
+                          </div>
+                          
+                          {/* Button */}
+                          {isHabis ? (
+                            <button disabled className="w-full flex items-center justify-center gap-2 bg-slate-200 text-slate-500 py-3.5 rounded-xl font-bold cursor-not-allowed shadow-none text-sm transition-colors">
+                              <XCircle size={16} /> Stok Kosong
+                            </button>
+                          ) : (
+                            <a href={`https://wa.me/6282114064622?text=Halo%20Admin%20Pamarayan,%20saya%20tertarik%20membeli%20komoditas%20${p.crop_name}`} target="_blank" className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white hover:bg-emerald-600 py-3.5 rounded-xl font-bold transition-colors shadow-md text-sm">
+                              <ShoppingBag size={16} /> Pesan Via WhatsApp
+                            </a>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             ) : (
               <div className="text-center py-24 bg-white rounded-3xl border border-slate-200 shadow-sm">
@@ -241,7 +255,6 @@ export default function PublicLandingPage() {
             </div>
             
             <div className="relative">
-              {/* Connecting Line (Desktop) */}
               <div className="hidden md:block absolute top-12 left-24 right-24 h-0.5 bg-gradient-to-r from-emerald-100 via-emerald-500 to-emerald-100"></div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative z-10">
@@ -337,7 +350,6 @@ export default function PublicLandingPage() {
 
         {/* 6. PREMIUM TESTIMONIALS (DARK GLASSMORPHISM) */}
         <div id="ulasan" className="bg-[#062F21] py-24 border-t border-[#041d14] relative overflow-hidden selection:bg-white selection:text-[#062F21]">
-          {/* Subtle Organic Patterns */}
           <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-emerald-500 rounded-full blur-[120px] opacity-10 translate-x-1/3 -translate-y-1/4"></div>
           <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-teal-500 rounded-full blur-[100px] opacity-10 -translate-x-1/3 translate-y-1/4"></div>
           
@@ -395,7 +407,6 @@ export default function PublicLandingPage() {
           <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm transition-opacity" onClick={() => setSelectedNews(null)}></div>
           <div className="relative bg-white w-full max-w-4xl rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] md:max-h-[85vh] animate-in slide-in-from-bottom-10 md:zoom-in-95 duration-300 overflow-hidden">
             
-            {/* Close Button */}
             <button onClick={() => setSelectedNews(null)} className="absolute top-4 right-4 md:top-6 md:right-6 z-20 w-10 h-10 flex items-center justify-center bg-white/50 backdrop-blur-xl text-slate-900 rounded-full hover:bg-white transition-colors shadow-sm">
               <X size={20} />
             </button>

@@ -8,7 +8,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           <div className="lg:col-span-1">
             <div className="flex items-center gap-2 mb-6">
-              <img src="/Logo 1.png" alt="Logo Pamarayan" className="h-10 w-auto object-contain" />
+              <img src="/Logo-1.png" alt="Logo Pamarayan" className="h-10 w-auto object-contain" />
               <span className="font-black text-xl text-green-500 tracking-tight">PERTANIAN PAMARAYAN</span>
             </div>
             <p className="text-sm leading-relaxed font-medium mb-6">

@@ -3,12 +3,10 @@
 import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import Navbar from '@/components/Navbar'
-import Footer from '@/components/Footer'
 import { 
   Plus, Wallet, ArrowRight, User, Box, ArrowLeft, 
   Search, Landmark, TrendingUp, Users, ShieldCheck, 
-  Building2, CheckCircle2, X 
+  Building2, CheckCircle2, X, Calculator, ArrowDownRight, Pickaxe, Banknote
 } from 'lucide-react'
 
 export default function DaftarInvestorPage() {
@@ -21,15 +19,60 @@ export default function DaftarInvestorPage() {
   // State Pencarian
   const [searchQuery, setSearchQuery] = useState('')
 
+  // State Global Keuangan (Kalkulator Bagi Hasil)
+  const [globalFinance, setGlobalFinance] = useState({
+    totalModal: 0,
+    totalOmset: 0,
+    pengembalianModalGlobal: 0,
+    labaBersihTotal: 0,
+    hakPengelola: 0,
+    dividenInvestorPool: 0
+  })
+
   const fetchData = async () => {
     setLoading(true)
     const { data: invData } = await supabase.from('investors').select('*').order('created_at', { ascending: true })
     const { data: ledgerData } = await supabase.from('cash_ledger').select('*')
     const { data: assetData } = await supabase.from('physical_assets').select('*')
+    const { data: salesData } = await supabase.from('sales').select('*')
 
-    if (invData) {
+    if (invData && ledgerData) {
+      // 1. Kalkulasi Global
+      const gModal = ledgerData.filter(l => l.type === 'PEMASUKAN').reduce((acc, curr) => acc + Number(curr.amount), 0)
+      const gOmset = salesData ? salesData.reduce((acc, curr) => acc + Number(curr.total_revenue), 0) : 0
+      
+      // LOGIKA BISNIS: Omset -> Tutup Modal -> Laba Bersih -> 50% Pengelola / 50% Investor
+      let pengembalianModalGlobal = 0
+      let labaBersihTotal = 0
+      let hakPengelola = 0
+      let dividenInvestorPool = 0
+
+      if (gOmset > gModal) {
+        // Jika Untung: Modal kembali full, sisa laba murni dibelah dua
+        pengembalianModalGlobal = gModal
+        labaBersihTotal = gOmset - gModal
+        hakPengelola = labaBersihTotal * 0.5
+        dividenInvestorPool = labaBersihTotal * 0.5
+      } else {
+        // Jika Rugi/Belum Balik Modal: Semua omset dipakai cicil modal, Laba = 0
+        pengembalianModalGlobal = gOmset
+        labaBersihTotal = 0
+        hakPengelola = 0
+        dividenInvestorPool = 0
+      }
+
+      setGlobalFinance({
+        totalModal: gModal,
+        totalOmset: gOmset,
+        pengembalianModalGlobal,
+        labaBersihTotal,
+        hakPengelola,
+        dividenInvestorPool
+      })
+
+      // 2. Agregasi per Investor
       const aggregated = invData.map(inv => {
-        const invLedger = ledgerData?.filter(l => l.investor_id === inv.id) || []
+        const invLedger = ledgerData.filter(l => l.investor_id === inv.id)
         const invAssets = assetData?.filter(a => a.investor_id === inv.id) || []
         
         let totalPemasukan = 0
@@ -40,10 +83,29 @@ export default function DaftarInvestorPage() {
           if (l.type === 'PENGELUARAN') totalPengeluaran += Number(l.amount)
         })
 
+        // Persentase Saham
+        const porsi = gModal > 0 ? (totalPemasukan / gModal) * 100 : 0
+        
+        let pengembalianModalIndividu = 0
+        let dividenIndividu = 0
+
+        if (gOmset > gModal) {
+          pengembalianModalIndividu = totalPemasukan
+          dividenIndividu = (porsi / 100) * dividenInvestorPool
+        } else {
+          pengembalianModalIndividu = (porsi / 100) * gOmset
+          dividenIndividu = 0
+        }
+
         return {
           ...inv,
           saldo: totalPemasukan - totalPengeluaran,
-          total_aset: invAssets.length
+          total_aset: invAssets.length,
+          modal_disetor: totalPemasukan,
+          porsi_saham: porsi,
+          pengembalian_modal: pengembalianModalIndividu,
+          hak_dividen: dividenIndividu,
+          total_diterima: pengembalianModalIndividu + dividenIndividu
         }
       })
       setInvestors(aggregated)
@@ -54,12 +116,11 @@ export default function DaftarInvestorPage() {
   // Efek Real-Time & Mount
   useEffect(() => {
     fetchData()
-
-    // Dengarkan perubahan pada 3 tabel sekaligus agar saldo selalu akurat
     const channel = supabase.channel('investor-channel')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'investors' }, () => fetchData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_ledger' }, () => fetchData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'physical_assets' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sales' }, () => fetchData())
       .subscribe()
 
     return () => {
@@ -75,16 +136,12 @@ export default function DaftarInvestorPage() {
     try {
       const { error } = await supabase.from('investors').insert([{ name: newName }])
       if (error) throw error
-
-      // Auto Notifikasi
       await supabase.from('notifications').insert([{
         title: 'Mitra Investor Baru',
         description: `Entitas investor ${newName} telah ditambahkan ke dalam sistem portofolio.`,
       }])
-
       setNewName('')
       setShowModal(false)
-      // fetchData() otomatis dipanggil oleh realtime channel
     } catch (error: any) {
       alert('Gagal menambah investor: ' + error.message)
     } finally {
@@ -92,7 +149,7 @@ export default function DaftarInvestorPage() {
     }
   }
 
-  // Kalkulasi KPI Global
+  // Kalkulasi KPI Global (Saldo Likuid & Aset)
   const stats = useMemo(() => {
     let totalAUM = 0
     let totalAssets = 0
@@ -100,17 +157,17 @@ export default function DaftarInvestorPage() {
       totalAUM += inv.saldo
       totalAssets += inv.total_aset
     })
-    return {
-      totalInvestors: investors.length,
-      totalAUM,
-      totalAssets
-    }
+    return { totalInvestors: investors.length, totalAUM, totalAssets }
   }, [investors])
 
-  // Filter Pencarian
   const filteredInvestors = investors.filter(inv => 
     inv.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
+
+  const formatRp = (angka: number) => {
+    const isMinus = angka < 0
+    return isMinus ? `- Rp ${Math.abs(angka).toLocaleString('id-ID')}` : `Rp ${Math.abs(angka).toLocaleString('id-ID')}`
+  }
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans flex flex-col selection:bg-blue-500 selection:text-white">
@@ -155,7 +212,6 @@ export default function DaftarInvestorPage() {
           
           {/* KPI DASHBOARD GLOBAL */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            {/* Total Portofolio / AUM */}
             <div className="bg-slate-900 rounded-[2rem] p-6 md:p-8 border border-slate-800 shadow-2xl relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-bl-[100px] -mr-4 -mt-4 transition-transform group-hover:scale-110 z-0"></div>
               <div className="relative z-10 flex flex-col h-full justify-between gap-4">
@@ -167,7 +223,6 @@ export default function DaftarInvestorPage() {
               </div>
             </div>
 
-            {/* Total Investor */}
             <div className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-200/80 shadow-xl relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-[100px] -mr-4 -mt-4 transition-transform group-hover:scale-110 z-0"></div>
               <div className="relative z-10 flex flex-col h-full justify-between gap-4">
@@ -179,7 +234,6 @@ export default function DaftarInvestorPage() {
               </div>
             </div>
             
-            {/* Total Aset Fisik */}
             <div className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-200/80 shadow-xl relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-24 h-24 bg-amber-50 rounded-bl-[100px] -mr-4 -mt-4 transition-transform group-hover:scale-110 z-0"></div>
               <div className="relative z-10 flex flex-col h-full justify-between gap-4">
@@ -191,6 +245,96 @@ export default function DaftarInvestorPage() {
               </div>
             </div>
           </div>
+
+          {/* KALKULATOR BAGI HASIL GLOBAL (Terintegrasi) */}
+          {!loading && investors.length > 0 && (
+            <div className="mb-10">
+              <div className="flex items-center gap-3 mb-6 px-2">
+                <div className="p-2.5 bg-blue-600 text-white shadow-lg shadow-blue-600/30 rounded-xl"><Calculator size={20} /></div>
+                <div>
+                  <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Kalkulasi Bagi Hasil (Dividen)</h2>
+                  <p className="text-xs font-bold text-slate-500 mt-1">Sistem Otomatis: Omset &rarr; Tutup Modal &rarr; Laba Bersih &rarr; Bagi 50:50</p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden">
+                {/* POHON PERHITUNGAN (WATERFALL) */}
+                <div className="grid grid-cols-2 md:grid-cols-5 divide-y md:divide-y-0 md:divide-x divide-slate-800 bg-slate-900 text-white">
+                  <div className="p-5 md:p-6 col-span-2 md:col-span-1">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1"><ArrowDownRight size={12}/> Total Penjualan (Omset)</p>
+                    <p className="text-xl md:text-2xl font-black text-white">{formatRp(globalFinance.totalOmset)}</p>
+                  </div>
+                  <div className="p-5 md:p-6 bg-slate-800/50">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">Pengembalian Modal</p>
+                    <p className="text-xl md:text-2xl font-black text-slate-300">- {formatRp(globalFinance.pengembalianModalGlobal)}</p>
+                  </div>
+                  <div className="p-5 md:p-6">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">Laba Bersih Total</p>
+                    <p className="text-xl md:text-2xl font-black text-emerald-400">{formatRp(globalFinance.labaBersihTotal)}</p>
+                  </div>
+                  <div className="p-5 md:p-6 bg-slate-800/50">
+                    <p className="text-[9px] font-bold text-orange-400 uppercase tracking-widest mb-2 flex items-center gap-1"><Pickaxe size={12}/> Hak Pengelola (50%)</p>
+                    <p className="text-xl md:text-2xl font-black text-orange-400">{formatRp(globalFinance.hakPengelola)}</p>
+                  </div>
+                  <div className="p-5 md:p-6 bg-blue-600 relative overflow-hidden">
+                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+                    <p className="text-[9px] font-black text-blue-200 uppercase tracking-widest mb-2 relative z-10 flex items-center gap-1"><Banknote size={12}/> Dividen Investor (50%)</p>
+                    <p className="text-2xl md:text-3xl font-black text-white relative z-10">{formatRp(globalFinance.dividenInvestorPool)}</p>
+                  </div>
+                </div>
+
+                {/* TABEL PEMBAGIAN INDIVIDU */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[800px]">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-[9px] font-black uppercase text-slate-500 tracking-wider">
+                        <th className="py-5 px-6 border-r border-slate-100">Nama Investor</th>
+                        <th className="py-5 px-6 border-r border-slate-100 text-right">Porsi (%)</th>
+                        <th className="py-5 px-6 border-r border-slate-100 text-right">Pengembalian Modal</th>
+                        <th className="py-5 px-6 border-r border-slate-100 text-right">Dividen Laba Bersih</th>
+                        <th className="py-5 px-6 bg-blue-50 text-blue-700 text-right">Total Uang Diterima</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-sm font-bold text-slate-800">
+                      {investors.map((inv) => (
+                        <tr key={'calc-'+inv.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="py-4 px-6 border-r border-slate-100 flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 shrink-0"><User size={14}/></div>
+                            <div>
+                              <span className="truncate block leading-tight">{inv.name}</span>
+                              <span className="text-[10px] text-slate-400 font-medium">Setor: {formatRp(inv.modal_disetor)}</span>
+                            </div>
+                          </td>
+                          <td className="py-4 px-6 border-r border-slate-100 text-right">
+                            <span className="bg-blue-100/50 text-blue-700 px-3 py-1.5 rounded-lg text-xs font-black border border-blue-200/50">
+                              {inv.porsi_saham.toFixed(2)}%
+                            </span>
+                          </td>
+                          <td className="py-4 px-6 border-r border-slate-100 text-right text-slate-700">
+                            {formatRp(inv.pengembalian_modal)}
+                            {inv.pengembalian_modal < inv.modal_disetor && inv.modal_disetor > 0 && (
+                              <div className="text-[9px] text-red-500 mt-1">Minus: {formatRp(inv.pengembalian_modal - inv.modal_disetor)}</div>
+                            )}
+                          </td>
+                          <td className="py-4 px-6 border-r border-slate-100 text-right text-emerald-600 font-black">
+                            {formatRp(inv.hak_dividen)}
+                          </td>
+                          <td className="py-4 px-6 text-right font-black text-blue-700 bg-blue-50/30 text-base">
+                            {formatRp(inv.total_diterima)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {globalFinance.totalOmset < globalFinance.totalModal && (
+                  <div className="bg-amber-50 p-4 text-center text-xs font-bold text-amber-700 border-t border-amber-100">
+                    Perhatian: Omset penjualan belum menutup Total Modal. Laba Bersih = Rp 0. Uang omset yang ada saat ini dibagikan secara proporsional sebagai cicilan pengembalian modal investor.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* KONTROL PENCARIAN & TAMBAH */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
@@ -223,7 +367,6 @@ export default function DaftarInvestorPage() {
               {filteredInvestors.map((inv) => (
                 <Link href={`/admin/investasi/${inv.id}`} key={inv.id} className="group bg-white rounded-[2rem] border border-slate-200/80 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full relative overflow-hidden p-6 md:p-8">
                   
-                  {/* Aksen Hiasan Sudut */}
                   <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-[100px] -mr-4 -mt-4 transition-transform group-hover:scale-110 z-0"></div>
                   
                   <div className="relative z-10 flex items-start gap-4 mb-8">
